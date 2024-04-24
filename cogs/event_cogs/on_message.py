@@ -12,21 +12,31 @@ class OnMessage(commands.Cog):
         self.bot = bot
         self.active_channels = load_active_channels
         self.instructions = instructions
-        
+
     @commands.Cog.listener()
     async def on_message(self, message):
-        
+
+        string_channel_id = str(message.channel.id)
+        is_replied = (message.reference and message.reference.resolved.author == self.bot.user) and smart_mention
+        is_active_channel = string_channel_id in self.active_channels()
+        is_allowed_dm = allow_dm and isinstance(message.channel, discord.DMChannel)
+        contains_trigger_word = any(word in message.content for word in trigger_words)
+        is_bot_mentioned = self.bot.user.mentioned_in(message) and smart_mention and not message.mention_everyone
+        bot_name_in_message = self.bot.user.name.lower() in message.content.lower() and smart_mention
+
+        if not (is_active_channel or is_allowed_dm or contains_trigger_word or is_bot_mentioned or is_replied or bot_name_in_message):
+            return
+
         if self.should_skip_message(message):
             return
 
-        string_channel_id = str(message.channel.id)
         instruc_config = self.get_instruction_config(string_channel_id)
         instructions = self.get_instructions(instruc_config)
 
         key = f"{message.author.id}-{string_channel_id}"
         if key not in message_history:
             message_history[key] = []
-        else: 
+        else:
             message_history[key] = message_history[key][-MAX_HISTORY:]
 
         message_history[key].append({"role": "user", "content": message.content})
@@ -34,11 +44,11 @@ class OnMessage(commands.Cog):
         history = message_history[key]
 
         response = await self.generate_bot_response(message, instructions, history)
-        
+
         message_history[key].append({"role": "assistant", "content": response})
 
         message_history[key] = message_history[key][-MAX_HISTORY:]
-        
+
         await self.play_response_audio(response, message)
 
         await self.send_response_chunks(response, message)
