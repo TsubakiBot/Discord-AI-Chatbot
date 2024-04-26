@@ -26,14 +26,14 @@ class AiStuffCog(commands.Cog):
             while len(tasks) < images:
                 task = asyncio.ensure_future(poly_image_gen(session, prompt))
                 tasks.append(task)
-                
+
             generated_images = await asyncio.gather(*tasks)
-                
+
         files = []
         for index, image in enumerate(generated_images):
             file = discord.File(image, filename=f"image_{index+1}.png")
             files.append(file)
-            
+
         await ctx.send(files=files, ephemeral=True)
 
     @commands.guild_only()
@@ -92,24 +92,17 @@ class AiStuffCog(commands.Cog):
 
         if is_nsfw:
             img_file = discord.File(imagefileobj, filename="image.png", spoiler=True, description=prompt)
-            prompt = f"||{prompt}||"
+            embed = discord.Embed(color=0xFF0000)
+            embed.title = f"🔞 ||{prompt}||"
         else:
             img_file = discord.File(imagefileobj, filename="image.png", description=prompt)
-
-        if is_nsfw:
-            embed = discord.Embed(color=0xFF0000)
-        else:
             embed = discord.Embed(color=discord.Color.random())
-        embed.title = f"🎨Generated Image by {ctx.author.display_name}"
-        embed.add_field(name='📝 Prompt', value=f'- {prompt}', inline=False)
+            embed.title = f"🎨 {prompt}"
         if negative is not None:
-            embed.add_field(name='📝 Negative Prompt', value=f'- {negative}', inline=False)
+            embed.add_field(name='📝 Negative', value=f'- *{negative}*', inline=False)
         embed.add_field(name='🤖 Model', value=f'- {model.value}', inline=True)
         embed.add_field(name='🧬 Sampler', value=f'- {sampler.value}', inline=True)
         embed.add_field(name='🌱 Seed', value=f'- {seed}', inline=True)
-
-        if is_nsfw:
-            embed.add_field(name='🔞 NSFW', value=f'- {str(is_nsfw)}', inline=True)
 
         await ctx.send(embed=embed, file=img_file)
 
